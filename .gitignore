@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# downloaded model (see README)
+hand_landmarker.task
+
+# personal data: your own recorded gestures and tuning
+gestures/*.json
+settings.json

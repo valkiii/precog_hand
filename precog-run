@@ -1,0 +1,4 @@
+#!/bin/sh
+# Launcher: ./precog-run [command]
+export GLOG_minloglevel=2 TF_CPP_MIN_LOG_LEVEL=3
+cd "$(dirname "$0")" && exec .venv/bin/python -m precog "$@"

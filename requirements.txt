@@ -1,0 +1,8 @@
+# Python 3.12 on macOS (Apple silicon). MediaPipe 1.x crashes on macOS 27, so it is pinned.
+mediapipe==0.10.21
+opencv-contrib-python==4.11.0.86
+numpy
+pyobjc-framework-Quartz
+pyobjc-framework-Cocoa
+pyobjc-framework-ApplicationServices
+pyobjc-framework-AVFoundation

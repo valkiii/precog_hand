@@ -1,0 +1,1151 @@
+<title>Precog</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Michroma&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a quiet control room at night. One reading column that widens into figure rows;
+   holographic hands (drawn live on canvas from the same 21-point model Precog uses) carry each chapter.
+   Deliberately a single dark look. Mode colours are the app's own: cyan gesture, amber manipulate,
+   magenta app switcher, green layout, red standby. */
+:root{
+  color-scheme:dark;
+  --void:#05080F; --deep:#0A111C; --panel:#0D1726; --line:#1A2A3E; --line-2:#24384F;
+  --ink:#DCE7F2; --mute:#8397AD; --faint:#4A5F77;
+  --cyan:#5CD6F2; --cyan-dim:#2B7C93; --ice:#EAF8FF;
+  --amber:#FFAA3B; --magenta:#E57BFF; --green:#7DF0A0; --red:#FF6B6E;
+  --display:"Michroma","Eurostile","Microgramma",ui-sans-serif,system-ui,sans-serif;
+  --body:"IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+}
+html{scroll-behavior:smooth;background:var(--void)}
+body{
+  margin:0;padding-inline:20px;background:var(--void);color:var(--ink);
+  font:300 17.5px/1.7 var(--body);overflow-x:hidden;
+}
+body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(60vw 40vw at 85% -5%, rgba(92,214,242,.10), transparent 60%),
+    radial-gradient(50vw 40vw at -10% 40%, rgba(92,214,242,.05), transparent 60%),
+    radial-gradient(70vw 50vw at 50% 120%, rgba(43,124,147,.10), transparent 60%);
+}
+body::after{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.35;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:64px 64px;
+  -webkit-mask-image:radial-gradient(ellipse at 50% 0%,#000 0%,transparent 70%);
+          mask-image:radial-gradient(ellipse at 50% 0%,#000 0%,transparent 70%);
+}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+:focus-visible{outline:1.5px solid var(--cyan);outline-offset:3px;border-radius:4px}
+h1,h2,h3{margin:0;font-weight:400;text-wrap:balance}
+p{margin:0}
+a{color:var(--cyan);text-decoration-thickness:1px;text-underline-offset:3px}
+b,strong{font-weight:500;color:var(--ice)}
+code,kbd{font:400 .86em var(--mono);color:var(--ice);background:rgba(92,214,242,.08);border:1px solid var(--line);border-radius:5px;padding:.08em .38em}
+canvas{display:block;width:100%;max-width:100%}
+
+/* progress rail */
+.rail{position:fixed;left:0;right:0;top:env(safe-area-inset-top,0px);height:2px;z-index:20;background:transparent}
+.rail i{display:block;height:100%;width:100%;transform-origin:left;transform:scaleX(0);background:linear-gradient(90deg,var(--cyan-dim),var(--cyan));box-shadow:0 0 12px var(--cyan)}
+
+/* structure */
+main{position:relative;z-index:1}
+.wrap{max-width:1120px;margin:0 auto}
+.kicker{font:500 12px/1.2 var(--mono);letter-spacing:.22em;text-transform:uppercase;color:var(--cyan)}
+h2{font:400 clamp(24px,3.2vw,36px)/1.22 var(--display);letter-spacing:.01em;color:var(--ice)}
+h3{font:500 19px/1.35 var(--body);color:var(--ice)}
+.txt{display:flex;flex-direction:column;gap:18px;min-width:0}
+.txt p{max-width:36em}
+.soft{color:var(--mute)}
+.ch{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:64px;align-items:center;padding-block:80px}
+.ch.flip .txt{order:2}
+.ch.stack{grid-template-columns:minmax(0,1fr);gap:40px}
+.ch.stack > .txt{max-width:760px}
+figure{margin:0;min-width:0;display:flex;flex-direction:column;gap:12px}
+figcaption{font:400 12.5px/1.5 var(--mono);color:var(--mute);letter-spacing:.02em}
+.screen{position:relative;border:1px solid var(--line);border-radius:16px;background:linear-gradient(180deg,rgba(13,23,38,.85),rgba(7,12,21,.85));overflow:hidden}
+.screen::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:16px;box-shadow:inset 0 0 0 1px rgba(92,214,242,.04),inset 0 0 60px rgba(92,214,242,.04)}
+.corner{position:absolute;width:14px;height:14px;border-color:var(--cyan-dim);border-style:solid;opacity:.9}
+.corner.tl{top:10px;left:10px;border-width:1.5px 0 0 1.5px}.corner.tr{top:10px;right:10px;border-width:1.5px 1.5px 0 0}
+.corner.bl{bottom:10px;left:10px;border-width:0 0 1.5px 1.5px}.corner.br{bottom:10px;right:10px;border-width:0 1.5px 1.5px 0}
+@media (max-width:860px){
+  body{font-size:16.5px}
+  .ch{grid-template-columns:minmax(0,1fr);gap:28px;padding-block:52px}
+  .ch.flip .txt{order:0}
+}
+
+/* hero */
+.hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px;align-items:center;padding-block:72px 24px}
+.hero h1{font:400 clamp(54px,9vw,118px)/1.12 var(--display);letter-spacing:.04em;color:var(--ice);padding-bottom:.08em;
+  background:linear-gradient(180deg,var(--ice) 30%,var(--cyan) 130%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 0 28px rgba(92,214,242,.25))}
+.hero .sub{font:300 clamp(19px,2vw,23px)/1.55 var(--body);max-width:30em}
+.hero .meta{font:400 13px/1.6 var(--mono);color:var(--mute)}
+.hero .txt{gap:24px}
+.hero-fig .screen{aspect-ratio:1/1}
+.hero-fig canvas{height:100%}
+.posecap{position:absolute;left:22px;right:22px;bottom:18px;display:flex;justify-content:space-between;align-items:baseline;gap:12px;font:400 12px/1.4 var(--mono);color:var(--mute)}
+.posecap b{font:400 15px/1.2 var(--display);letter-spacing:.06em;color:var(--ice)}
+.cue{display:flex;align-items:center;justify-content:center;gap:12px;padding-block:14px 40px;font:400 12px/1 var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--mute)}
+.cue span{width:1px;height:40px;background:linear-gradient(var(--cyan),transparent);animation:drip 2.4s ease-in-out infinite}
+@keyframes drip{0%{transform:scaleY(0);transform-origin:top}50%{transform:scaleY(1);transform-origin:top}51%{transform-origin:bottom}100%{transform:scaleY(0);transform-origin:bottom}}
+@media (max-width:860px){.hero{grid-template-columns:minmax(0,1fr);padding-block:48px 12px}}
+
+/* facts strip */
+.facts{display:flex;flex-wrap:wrap;gap:10px 28px;font:400 13px/1.5 var(--mono);color:var(--mute)}
+.facts span b{font-weight:500;color:var(--cyan)}
+
+/* acts */
+.act{position:relative;display:grid;justify-items:center;text-align:center;gap:14px;padding-block:120px 40px}
+.act .num{font:400 12px/1 var(--mono);letter-spacing:.4em;color:var(--cyan)}
+.act h2{font-size:clamp(40px,6.4vw,78px);line-height:1;letter-spacing:.06em}
+.act p{max-width:34em;color:var(--mute)}
+.act .halo{position:absolute;left:50%;top:58%;width:min(560px,90%);aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;
+  background:radial-gradient(circle,rgba(92,214,242,.10),transparent 62%);z-index:-1;pointer-events:none}
+.act .halo::before,.act .halo::after{content:"";position:absolute;inset:18%;border-radius:50%;border:1px solid rgba(92,214,242,.14)}
+.act .halo::after{inset:30%;border-style:dashed;animation:spin 60s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* capability list */
+.caps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 28px;margin:0;padding:0;list-style:none}
+.caps li{display:grid;grid-template-columns:10px minmax(0,1fr);gap:14px;align-items:baseline;padding-block:12px;border-bottom:1px solid var(--line)}
+.caps li::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c,var(--cyan));box-shadow:0 0 10px var(--c,var(--cyan));transform:translateY(-1px)}
+@media (max-width:640px){.caps{grid-template-columns:minmax(0,1fr)}}
+
+/* landmark figure */
+#lmk{width:100%;height:auto;overflow:visible}
+#lmk .bone{stroke:var(--cyan);stroke-width:2.2;stroke-linecap:round;fill:none;filter:url(#glow)}
+#lmk .pt circle{fill:var(--void);stroke:var(--ice);stroke-width:1.6;transition:r .2s,fill .2s}
+#lmk .pt text{font:500 11px var(--mono);fill:var(--mute)}
+#lmk .pt:hover circle,#lmk .pt.on circle{fill:var(--cyan);r:7}
+#lmk .pt.key text{fill:var(--ice)}
+#lmk .meas{stroke:var(--amber);stroke-width:1.5;stroke-dasharray:5 5;fill:none;animation:march 1.6s linear infinite}
+#lmk .lab{font:400 12px var(--mono);fill:var(--amber)}
+#lmk .palm{fill:rgba(125,240,160,.12);stroke:var(--green);stroke-width:1.2;stroke-dasharray:3 4}
+#lmk .lab.g{fill:var(--green)}
+@keyframes march{to{stroke-dashoffset:-20}}
+.lmk-read{font:400 13px/1.6 var(--mono);color:var(--mute);min-height:1.6em}
+.lmk-read b{color:var(--cyan);font-weight:500}
+
+/* modes */
+.modes{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.mode{--c:var(--cyan);position:relative;display:flex;flex-direction:column;gap:10px;padding:20px 18px 18px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,color-mix(in srgb,var(--c) 7%,var(--panel)),var(--deep));min-width:0;transition:border-color .3s,transform .3s}
+.mode:hover{border-color:color-mix(in srgb,var(--c) 55%,var(--line));transform:translateY(-3px)}
+.mode .dot{width:10px;height:10px;border-radius:50%;background:var(--c);box-shadow:0 0 14px var(--c);animation:pulse 3s ease-in-out infinite}
+.mode h3{font:400 14px/1.3 var(--display);letter-spacing:.05em;color:var(--c)}
+.mode p{font-size:14.5px;line-height:1.55;color:var(--ink)}
+.mode dl{margin:0;display:grid;gap:4px;font:400 12px/1.45 var(--mono);color:var(--mute)}
+.mode dt{color:var(--faint);letter-spacing:.12em;text-transform:uppercase;font-size:10.5px}
+.mode dd{margin:0 0 6px}
+@keyframes pulse{50%{opacity:.45}}
+@media (max-width:1000px){.modes{grid-template-columns:repeat(2,minmax(0,1fr))}.mode:last-child{grid-column:1/-1}}
+@media (max-width:560px){.modes{grid-template-columns:minmax(0,1fr)}}
+
+/* gesture gallery */
+.gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.gcard{--c:var(--cyan);display:flex;flex-direction:column;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--deep);min-width:0}
+.gcard canvas{aspect-ratio:4/3;height:auto;background:radial-gradient(circle at 50% 40%,color-mix(in srgb,var(--c) 7%,transparent),transparent 70%)}
+.gcard .gb{display:flex;flex-direction:column;gap:6px;padding:16px 18px 18px;border-top:1px solid var(--line)}
+.gcard .tag{font:500 10.5px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--c)}
+.gcard h3{font-size:17px}
+.gcard p{font-size:14.5px;line-height:1.55;color:var(--mute)}
+@media (max-width:980px){.gallery{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:600px){.gallery{grid-template-columns:minmax(0,1fr)}}
+
+/* event log */
+.evlog{font:400 12.5px/1.75 var(--mono);color:var(--mute)}
+
+/* pose lab */
+.lab{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:28px;align-items:start}
+.lab .screen{aspect-ratio:1/1}
+.lab canvas{height:100%}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font:400 12.5px/1 var(--mono);color:var(--ink);background:transparent;border:1px solid var(--line-2);border-radius:999px;padding:9px 14px;cursor:pointer;transition:border-color .2s,color .2s,background .2s}
+.chip:hover{border-color:var(--cyan-dim)}
+.chip[aria-pressed="true"]{color:var(--void);background:var(--cyan);border-color:var(--cyan)}
+.sliders{display:grid;grid-template-columns:auto minmax(0,1fr) 3.4em;gap:8px 14px;align-items:center;font:400 12.5px/1.2 var(--mono);color:var(--mute)}
+.sliders output{text-align:right;color:var(--ice);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--cyan);min-width:0}
+.readout{display:grid;gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.readout div{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;padding:9px 14px;font:400 12.5px/1.4 var(--mono);color:var(--mute);border-bottom:1px solid var(--line)}
+.readout div:last-child{border-bottom:0}
+.readout b{font-weight:500;color:var(--ice);font-variant-numeric:tabular-nums}
+.readout .ok b{color:var(--green)}
+.verdict{font:400 15px/1.5 var(--body);padding:14px 16px;border-radius:12px;border:1px solid var(--line);background:rgba(92,214,242,.05);color:var(--ice);min-height:3.2em}
+.verdict small{display:block;font:400 11px/1.4 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);margin-bottom:4px}
+@media (max-width:860px){.lab{grid-template-columns:minmax(0,1fr)}}
+
+/* architecture svg */
+#arch{width:100%;height:auto}
+#arch .box{fill:var(--panel);stroke:var(--line-2);stroke-width:1.2}
+#arch .box.hot{stroke:var(--cyan-dim)}
+#arch text{font:400 13px var(--mono);fill:var(--ink)}
+#arch .t{font:400 14px var(--display);fill:var(--ice);letter-spacing:.04em}
+#arch .s{fill:var(--mute);font-size:11.5px}
+#arch .flow{fill:none;stroke:var(--cyan);stroke-width:1.6;stroke-dasharray:3 9;stroke-linecap:round;animation:march 1.2s linear infinite}
+#arch .flow.slow{animation-duration:2.4s}
+#arch .flow.a{stroke:var(--amber)} #arch .flow.g{stroke:var(--green)} #arch .flow.m{stroke:var(--magenta)}
+#arch .lbl{font-size:11px;fill:var(--mute)}
+.files{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px 24px;margin:0;padding:0;list-style:none;font-size:14.5px}
+.files li{padding-block:9px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:2px;min-width:0}
+.files code{align-self:flex-start}
+.files span{color:var(--mute);font-size:13.5px;line-height:1.5}
+@media (max-width:860px){.files{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.files{grid-template-columns:minmax(0,1fr)}}
+
+/* steps + code */
+.steps{display:grid;gap:0;counter-reset:s;margin:0;padding:0;list-style:none}
+.steps > li{counter-increment:s;display:grid;grid-template-columns:52px minmax(0,1fr);gap:18px;padding-block:22px;border-top:1px solid var(--line)}
+.steps > li::before{content:counter(s,decimal-leading-zero);font:400 15px/1.6 var(--display);color:var(--cyan);letter-spacing:.06em}
+.steps .txt{gap:12px}
+.code{position:relative;border:1px solid var(--line);border-radius:12px;background:#060B14;overflow:hidden;min-width:0}
+.code pre{margin:0;padding:16px 18px;overflow-x:auto;font:400 13.5px/1.75 var(--mono);color:var(--ice)}
+.code pre .c{color:var(--faint)}
+.code pre .p{color:var(--cyan-dim);user-select:none}
+.copy{position:absolute;top:8px;right:8px;font:400 11px/1 var(--mono);letter-spacing:.08em;color:var(--mute);background:var(--panel);border:1px solid var(--line-2);border-radius:7px;padding:7px 10px;cursor:pointer}
+.copy:hover{color:var(--ice);border-color:var(--cyan-dim)}
+
+/* cheat sheet */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:15px}
+th,td{text-align:left;padding:13px 18px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:500 11px/1.2 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--mute);background:var(--deep)}
+tr:last-child td{border-bottom:0}
+td:first-child{white-space:nowrap}
+td .m{display:inline-flex;align-items:center;gap:8px;font:400 12px var(--mono);color:var(--c)}
+td .m::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c)}
+td.k{color:var(--mute)}
+
+footer{padding-block:80px 60px;display:grid;gap:14px;justify-items:center;text-align:center;font:400 13px/1.7 var(--mono);color:var(--mute)}
+footer .sig{font:400 22px/1 var(--display);letter-spacing:.2em;color:var(--ice)}
+
+/* reveal: everything is visible at rest; the script only rewinds what starts below the fold */
+.rv{transition:opacity 1.1s cubic-bezier(.2,.7,.2,1),transform 1.1s cubic-bezier(.2,.7,.2,1),filter 1.1s}
+.rv.pre{opacity:0;transform:translateY(26px);filter:blur(6px)}
+.rv.d1{transition-delay:.08s}.rv.d2{transition-delay:.16s}.rv.d3{transition-delay:.24s}.rv.d4{transition-delay:.32s}.rv.d5{transition-delay:.4s}
+@media (prefers-reduced-motion:reduce){.rv,.rv.pre{transition:none;opacity:1;transform:none;filter:none}.cue span,.mode .dot,.act .halo::after,#arch .flow,#lmk .meas{animation:none}}
+</style>
+
+<div class="rail" aria-hidden="true"><i id="rail"></i></div>
+
+<main id="top">
+<div class="wrap">
+
+  <!-- ============ HERO ============ -->
+  <header class="hero">
+    <div class="txt">
+      <span class="kicker">A hand-gesture interface for macOS</span>
+      <h1>Precog</h1>
+      <p class="sub">Wave at your Mac. Slide between desktops with three fingers in the air, pinch to click, grab a window and throw it to the other screen. A webcam, a model that finds 21 points on each hand, and a matcher that learns the gestures you teach it.</p>
+      <p class="meta">Python · OpenCV · MediaPipe · PyObjC<br>Runs locally. No video leaves your machine.</p>
+    </div>
+    <figure class="hero-fig">
+      <div class="screen">
+        <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+        <canvas id="hero" role="img" aria-label="A glowing hand skeleton cycling through Precog's gestures"></canvas>
+        <div class="posecap" aria-live="polite"><b id="pc-name">Open hand</b><span id="pc-do">relaxed — nothing happens</span></div>
+      </div>
+    </figure>
+  </header>
+  <div class="cue" aria-hidden="true"><span></span>scroll</div>
+
+  <!-- ============ PROLOGUE ============ -->
+  <section class="ch" id="why">
+    <div class="txt rv">
+      <span class="kicker">Prologue</span>
+      <h2>The interface from the film, on a laptop</h2>
+      <p>In <i>Minority Report</i>, detectives sort evidence by sweeping their hands through the air. The film needed gloves and a wall of glass. Today a laptop camera and an open hand-tracking model are enough to try the same idea on an ordinary desk.</p>
+      <p>Precog watches your hands through the webcam (or an iPhone acting as one), turns each frame into 21 points per hand, and compares what it sees with gestures you recorded. When something matches, it acts on macOS directly: desktops, windows, apps, clicks.</p>
+      <div class="facts"><span><b>21</b> landmarks per hand</span><span><b>~30</b> frames per second</span><span><b>2</b> hands at once</span><span><b>0</b> extra hardware</span></div>
+    </div>
+    <div class="txt rv d1">
+      <ul class="caps">
+        <li style="--c:var(--cyan)"><span><b>Swipe desktops</b> with three fingers, the way a trackpad does it.</span></li>
+        <li style="--c:var(--amber)"><span><b>Point and pinch</b> to click, right-click and drag windows.</span></li>
+        <li style="--c:var(--magenta)"><span><b>Switch apps</b> from a strip of icons that follows your hand.</span></li>
+        <li style="--c:var(--green)"><span><b>Snap windows</b> to halves and quarters by pulling your hands apart.</span></li>
+        <li style="--c:var(--red)"><span><b>Pause it all</b> by showing ten spread fingers.</span></li>
+        <li style="--c:var(--ice)"><span><b>Teach your own</b> poses and movements, bound to any action.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ ACT I ============ -->
+  <div class="act rv" id="seeing">
+    <div class="halo" aria-hidden="true"></div>
+    <span class="num">ACT I</span>
+    <h2>Seeing</h2>
+    <p>From camera pixels to a hand you can measure.</p>
+  </div>
+
+  <section class="ch" id="landmarks">
+    <div class="txt rv">
+      <span class="kicker">Hand tracking</span>
+      <h2>Twenty-one points per hand</h2>
+      <p>Each camera frame goes through Google's MediaPipe hand landmarker. It returns 21 points for every hand it finds: the wrist, four joints on the thumb, and four on each finger, plus a guess at which hand is left and which is right.</p>
+      <p>Precog never looks at pixels after this step. Everything that follows (poses, swipes, pinches, the standby check) is geometry on these points.</p>
+      <p class="lmk-read" id="lmk-read">Hover a point to see its name.</p>
+    </div>
+    <figure class="rv d1">
+      <div class="screen" style="padding:22px 18px 6px">
+        <svg id="lmk" viewBox="-170 -300 340 340" role="img" aria-label="The 21 hand landmarks with their numbers">
+          <defs><filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+          <g id="lmk-g"></g>
+        </svg>
+      </div>
+      <figcaption>Points 0–20. Amber: the hand-size ruler (wrist → middle knuckle). Green: the palm centre.</figcaption>
+    </figure>
+  </section>
+
+  <section class="ch flip" id="normalize">
+    <div class="txt rv">
+      <span class="kicker">Making hands comparable</span>
+      <h2>Near or far, the same hand</h2>
+      <p>A hand close to the camera looks twice as big as one at arm's length. So every hand is redrawn relative to its own wrist and divided by its own size: the distance from the wrist (point 0) to the middle-finger knuckle (point 9).</p>
+      <p>After that, a fist is a fist anywhere in the frame. Movement is measured the same way: the palm centre (the average of the wrist and the four knuckles) travels in <b>hand-widths</b>, not pixels. A swipe of four hand-widths is the same swipe whether you sit close or lean back.</p>
+    </div>
+    <figure class="rv d1">
+      <div class="screen"><canvas id="norm" style="aspect-ratio:16/10" role="img" aria-label="A near and a far hand shrinking to the same normalised shape"></canvas></div>
+      <figcaption>Two hands at different distances → translated to the wrist → scaled by hand size → identical.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============ ACT II ============ -->
+  <div class="act rv" id="recognizing">
+    <div class="halo" aria-hidden="true"></div>
+    <span class="num">ACT II</span>
+    <h2>Recognizing</h2>
+    <p>Comparing what the camera sees with what you taught it.</p>
+  </div>
+
+  <section class="ch" id="kinds">
+    <div class="txt rv">
+      <span class="kicker">Three kinds of gesture</span>
+      <h2>Poses, movements, and both hands</h2>
+      <p><b>A pose</b> is a hand shape held still: a fist, a V sign, the "telephone". It fires after you hold it for 0.45 seconds with the palm nearly still, and won't fire again until you let go.</p>
+      <p><b>A movement</b> is a shape plus a path: a swipe, a push, a fist that springs open. Precog keeps the last few seconds of each hand and keeps asking whether the recent stretch looks like one of your recordings.</p>
+      <p><b>A two-hand movement</b> adds the gap between the hands and the path of their midpoint. "Expand" (hands together, then apart) is mostly a growing gap. While both hands are in view, one-hand swipes are ignored so pulling your hands apart doesn't also switch desktops.</p>
+    </div>
+    <figure class="rv d1">
+      <div class="screen"><canvas id="kinds-c" style="aspect-ratio:16/11" role="img" aria-label="Three panels: a held pose, a one-hand swipe, a two-hand expand"></canvas></div>
+      <figcaption>Pose · movement · two-hand movement</figcaption>
+    </figure>
+  </section>
+
+  <section class="ch flip" id="dtw">
+    <div class="txt rv">
+      <span class="kicker">Dynamic time warping</span>
+      <h2>A slow swipe and a fast swipe are the same swipe</h2>
+      <p>People never repeat a movement at the same speed. Precog resamples every movement to 16 steps, then lines the live one up against each recording with dynamic time warping: every live step is paired with the recorded step it resembles most, as long as the order is kept.</p>
+      <p>The cost of a pairing is the difference in hand shape plus 0.35 × the difference in path. Averaged over the matched pairs, that gives one distance per recording. Below the gesture's threshold, it fires.</p>
+    </div>
+    <figure class="rv d1">
+      <div class="screen"><canvas id="dtw-c" style="aspect-ratio:16/10" role="img" aria-label="A recorded swipe and a slower live swipe, with warping lines pairing their steps"></canvas></div>
+      <figcaption>Top: your recording (16 steps). Bottom: a slower live swipe. Lines: the pairing DTW finds.</figcaption>
+    </figure>
+  </section>
+
+  <section class="ch" id="calib">
+    <div class="txt rv">
+      <span class="kicker">Teaching it</span>
+      <h2>Six samples set the threshold</h2>
+      <p>You record a gesture about six times. Recording starts by itself once the camera sees your hand; for movements you hold still, do the move, and hold still again.</p>
+      <p>Precog then measures how far each sample is from its nearest neighbour. A take that disagrees with the rest (a misread hand, a much slower attempt) is set aside: anything beyond three times the median spread. The threshold comes from the spread of what's left, with a floor and a ceiling so no gesture becomes impossible or too eager.</p>
+      <p class="soft"><code>./precog-run list</code> flags gestures whose samples disagree, so you know which ones to record again.</p>
+    </div>
+    <figure class="rv d1">
+      <div class="screen" style="padding:10px">
+        <svg id="cal" viewBox="0 0 520 360" role="img" aria-label="Six samples: five close together inside a threshold ring, one outlier set aside" style="width:100%;height:auto">
+          <g id="cal-g"></g>
+        </svg>
+      </div>
+      <figcaption>Five consistent samples define the ring. The far one is ignored when setting the threshold.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============ ACT III ============ -->
+  <div class="act rv" id="acting">
+    <div class="halo" aria-hidden="true"></div>
+    <span class="num">ACT III</span>
+    <h2>Acting</h2>
+    <p>Desktops, windows, apps and clicks, driven by your hands.</p>
+  </div>
+
+  <section class="ch stack" id="modes">
+    <div class="txt rv">
+      <span class="kicker">Five modes, five colours</span>
+      <h2>Precog always shows which mode it is in</h2>
+      <p>The colour of the hand skeleton in the corner of your screen tells you what your hands will do right now. Most of the time you are in gesture mode; the others open for one task and close again.</p>
+    </div>
+    <div class="modes">
+      <article class="mode rv" style="--c:var(--cyan)"><span class="dot"></span><h3>Gesture</h3><p>Your recorded gestures and the built-in three-finger swipe are live.</p><dl><dt>Enter</dt><dd>Default</dd><dt>Leave</dt><dd>Any other mode</dd></dl></article>
+      <article class="mode rv d1" style="--c:var(--amber)"><span class="dot"></span><h3>Manipulate</h3><p>Your knuckles steer the cursor. Pinch to click, pinch and move to drag a window.</p><dl><dt>Enter</dt><dd>Your "pointer" pose</dd><dt>Leave</dt><dd>Same pose, or lower your hands for 2 s</dd></dl></article>
+      <article class="mode rv d2" style="--c:var(--magenta)"><span class="dot"></span><h3>App switcher</h3><p>A strip of your apps, most recent first. The highlight follows your hand.</p><dl><dt>Enter</dt><dd>"Telephone" pose</dd><dt>Leave</dt><dd>Pinch to open, lower hand to cancel</dd></dl></article>
+      <article class="mode rv d3" style="--c:var(--green)"><span class="dot"></span><h3>Layout</h3><p>A 3×3 grid of window layouts with a live preview on screen.</p><dl><dt>Enter</dt><dd>"Expand" with two hands</dd><dt>Leave</dt><dd>Pinch to apply, lower hand to cancel</dd></dl></article>
+      <article class="mode rv d4" style="--c:var(--red)"><span class="dot"></span><h3>Standby</h3><p>Precog ignores everything except the gesture that wakes it.</p><dl><dt>Enter</dt><dd>Ten spread fingers</dd><dt>Leave</dt><dd>Ten spread fingers again</dd></dl></article>
+    </div>
+  </section>
+
+  <section class="ch stack" id="gestures">
+    <div class="txt rv">
+      <span class="kicker">The gestures</span>
+      <h2>What your hands can do</h2>
+      <p>Three of these are built in (three-finger swipe, pinch, ten fingers). The rest start from poses you record yourself, so you can pick any shape that feels natural.</p>
+    </div>
+    <div class="gallery">
+      <article class="gcard rv" style="--c:var(--cyan)"><canvas data-scene="swipe" role="img" aria-label="Three fingers sliding to the next desktop"></canvas><div class="gb"><span class="tag">Built in · gesture mode</span><h3>Three-finger swipe</h3><p>Index, middle and ring finger up, then move sideways. The desktop slides with your hand; let go past a third of the way to switch.</p></div></article>
+      <article class="gcard rv d1" style="--c:var(--amber)"><canvas data-scene="click" role="img" aria-label="A pinch clicking a button, with a ring that fills as the fingers close"></canvas><div class="gb"><span class="tag">Built in · manipulate</span><h3>Pinch to click</h3><p>Thumb to index fingertip, then release. The ring around the cursor fills as your fingers close. Thumb to middle finger is a right-click.</p></div></article>
+      <article class="gcard rv d2" style="--c:var(--amber)"><canvas data-scene="drag" role="img" aria-label="A window dragged to the left edge and snapped to the left half"></canvas><div class="gb"><span class="tag">Built in · manipulate</span><h3>Grab, drag, snap</h3><p>Pinch on a window and move your hand. Drag into the left or right edge for half the screen, the top edge to maximize.</p></div></article>
+      <article class="gcard rv" style="--c:var(--magenta)"><canvas data-scene="switcher" role="img" aria-label="The telephone pose opening a strip of app icons, then a pinch choosing one"></canvas><div class="gb"><span class="tag">Your pose · app switcher</span><h3>Telephone → apps</h3><p>The strip locks open. Relax your hand, move left or right to choose, pinch to open. Folding into a fist never selects by accident.</p></div></article>
+      <article class="gcard rv d1" style="--c:var(--green)"><canvas data-scene="layout" role="img" aria-label="Two hands pulling apart, then picking the right-half layout"></canvas><div class="gb"><span class="tag">Your gesture · layout</span><h3>Expand → layouts</h3><p>Hands together, then apart. Point at a cell to preview where the window will go; pinch to apply it.</p></div></article>
+      <article class="gcard rv d2" style="--c:var(--red)"><canvas data-scene="standby" role="img" aria-label="Two spread hands filling a ring that toggles standby"></canvas><div class="gb"><span class="tag">Built in · any mode</span><h3>Ten fingers → standby</h3><p>Both hands, fingers spread wider than a normal open hand, held still for 0.8 s. Do it again to wake Precog up.</p></div></article>
+    </div>
+  </section>
+
+  <section class="ch" id="spaces">
+    <div class="txt rv">
+      <span class="kicker">Under the trackpad</span>
+      <h2>Sliding desktops the way a trackpad does</h2>
+      <p>The obvious approach, pressing Ctrl+→ in software, does nothing: macOS ignores synthetic key presses for switching desktops. A real three-finger swipe sends something else, a private "dock swipe" event with a <b>progress</b> value that grows as your fingers travel.</p>
+      <p>Precog sends that same event sequence. It starts with <code>Began</code>, follows with a stream of <code>Changed</code> events while your hand moves, and ends with <code>Ended</code> to commit or <code>Cancelled</code> to spring back. On macOS 27 each event also has to carry a packed hardware record in a hidden field (4205); that part is ported from the open-source tool <a href="https://github.com/joshuarli/iss">iss</a>.</p>
+      <div class="evlog" id="evlog" aria-live="off"></div>
+    </div>
+    <figure class="rv d1">
+      <div class="screen"><canvas id="spaces-c" style="aspect-ratio:16/10" role="img" aria-label="Two desktops sliding with a hand while dock-swipe events are logged"></canvas></div>
+      <figcaption>Progress follows your hand: 4 hand-widths = one whole desktop. Past 0.33 (or a flick) commits.</figcaption>
+    </figure>
+  </section>
+
+  <section class="ch flip" id="clicking">
+    <div class="txt rv">
+      <span class="kicker">Clicking in mid-air</span>
+      <h2>A pinch that behaves like a mouse button</h2>
+      <p>The cursor follows your index and middle knuckles, which barely move when you pinch. As thumb and index close in, the cursor slows down; once they touch, it freezes, so the click lands where you aimed.</p>
+      <p>Releasing the pinch is the click, however long it lasted. It only becomes a drag once your hand moves more than 45 pixels while pinched. Two pinches in a row make a double-click. Pinch distance is measured in 3D, so fingers that merely overlap from the camera's angle don't count.</p>
+    </div>
+    <figure class="rv d1">
+      <div class="screen"><canvas id="pinch-c" style="aspect-ratio:16/10" role="img" aria-label="The pinch distance falling below the click threshold, with the cursor freezing"></canvas></div>
+      <figcaption>Pinch distance (thumb to index, in hand sizes) over a slow click. Below 0.32 is pressed; above 0.48 is released.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============ POSE LAB ============ -->
+  <div class="act rv" id="lab">
+    <div class="halo" aria-hidden="true"></div>
+    <span class="num">INTERLUDE</span>
+    <h2>Pose lab</h2>
+    <p>Shape the hand and read the numbers Precog would compute from it.</p>
+  </div>
+
+  <section class="ch stack">
+    <div class="lab">
+      <figure class="rv">
+        <div class="screen">
+          <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+          <canvas id="lab-c" role="img" aria-label="An adjustable hand skeleton"></canvas>
+        </div>
+        <figcaption>Same 21-point model, same rules and thresholds as the app.</figcaption>
+      </figure>
+      <div class="txt rv d1" style="gap:20px">
+        <div class="chips" role="group" aria-label="Preset poses">
+          <button class="chip" data-pose="open" aria-pressed="true">Open hand</button>
+          <button class="chip" data-pose="three" aria-pressed="false">Three fingers</button>
+          <button class="chip" data-pose="pinch" aria-pressed="false">Pinch</button>
+          <button class="chip" data-pose="mid" aria-pressed="false">Middle pinch</button>
+          <button class="chip" data-pose="phone" aria-pressed="false">Telephone</button>
+          <button class="chip" data-pose="v" aria-pressed="false">V sign</button>
+          <button class="chip" data-pose="spread" aria-pressed="false">Spread wide</button>
+          <button class="chip" data-pose="fist" aria-pressed="false">Fist</button>
+        </div>
+        <div class="sliders" id="sliders"></div>
+        <div class="readout" id="readout"></div>
+        <div class="verdict" id="verdict"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ UNDER THE HOOD ============ -->
+  <section class="ch stack" id="hood">
+    <div class="txt rv">
+      <span class="kicker">Under the hood</span>
+      <h2>Two processes and three macOS doors</h2>
+      <p>The main process reads the camera, runs the hand model and makes every decision. A second process does nothing but draw: a transparent, click-through window above everything, repainted 60 times a second, which holds the reticle, previews, banners and the hand skeleton in the corner. It also owns the ◉ menu-bar item.</p>
+      <p>To act on macOS, Precog uses three doors: the Accessibility API to move and resize windows, synthetic mouse events for clicks, and dock-swipe gesture events for desktops.</p>
+    </div>
+    <figure class="rv d1">
+      <div class="screen" style="padding:14px">
+        <svg id="arch" viewBox="0 0 1000 380" role="img" aria-label="Architecture: camera to main process to overlay process and macOS">
+          <rect class="box" x="20" y="150" width="150" height="80" rx="12"/>
+          <text class="t" x="95" y="186" text-anchor="middle">Camera</text>
+          <text class="s" x="95" y="208" text-anchor="middle">FaceTime or iPhone</text>
+
+          <rect class="box hot" x="250" y="40" width="330" height="300" rx="16"/>
+          <text class="t" x="275" y="76">precog · main</text>
+          <text x="275" y="112">tracker.py</text><text class="s" x="400" y="112">MediaPipe, 2 hands</text>
+          <text x="275" y="144">features.py</text><text class="s" x="400" y="144">shape · path · pinch</text>
+          <text x="275" y="176">recognizer.py</text><text class="s" x="400" y="176">poses + DTW</text>
+          <text x="275" y="208">desktop_swipe.py</text><text class="s" x="430" y="208">three fingers</text>
+          <text x="275" y="240">pointer.py</text><text class="s" x="400" y="240">click · drag · snap</text>
+          <text x="275" y="272">switcher.py</text><text class="s" x="400" y="272">pickers</text>
+          <text x="275" y="304">standby.py</text><text class="s" x="400" y="304">ten fingers</text>
+
+          <rect class="box" x="680" y="30" width="300" height="110" rx="14"/>
+          <text class="t" x="700" y="64">overlay</text>
+          <text class="s" x="700" y="90">transparent, click-through, 60 Hz</text>
+          <text class="s" x="700" y="112">reticle · pickers · ◉ menu bar</text>
+
+          <rect class="box" x="680" y="200" width="300" height="150" rx="14"/>
+          <text class="t" x="700" y="234">macOS</text>
+          <text x="700" y="266">Accessibility API</text><text class="s" x="860" y="266">windows</text>
+          <text x="700" y="294">CGEvent mouse</text><text class="s" x="860" y="294">clicks</text>
+          <text x="700" y="322">dock swipe · 4205</text><text class="s" x="860" y="322">desktops</text>
+
+          <path class="flow" d="M170 190 H250"/>
+          <text class="lbl" x="178" y="180">30 fps</text>
+          <path class="flow slow m" d="M580 100 C630 100 630 85 680 85"/>
+          <text class="lbl" x="596" y="80">pipe · state</text>
+          <path class="flow slow" d="M680 120 C630 120 630 130 580 130" style="animation-direction:reverse"/>
+          <text class="lbl" x="596" y="152">menu clicks</text>
+          <path class="flow a" d="M580 240 C630 240 630 262 680 262"/>
+          <path class="flow" d="M580 290 C630 290 630 318 680 318"/>
+        </svg>
+      </div>
+    </figure>
+    <ul class="files rv">
+      <li><code>tracker.py</code><span>Camera, skips a dark camera automatically, MediaPipe landmarks</span></li>
+      <li><code>features.py</code><span>Wrist-relative shapes, hand size, palm path, pinch in 3D</span></li>
+      <li><code>recognizer.py</code><span>Pose holds, DTW for movements, outlier-proof thresholds</span></li>
+      <li><code>spaces.py</code><span>Dock-swipe events with the macOS 27 payload</span></li>
+      <li><code>pointer.py</code><span>Cursor, click on release, drag, edge snap, throw</span></li>
+      <li><code>overlay.py</code><span>Everything you see on screen, plus the menu bar</span></li>
+      <li><code>recorder.py</code><span>Hands-free recording with on-screen guidance</span></li>
+      <li><code>switcher.py</code><span>App strip and layout grid, anchored where your hand settles</span></li>
+      <li><code>doctor.py</code><span>Checks camera, hand detection, permissions, overlay</span></li>
+    </ul>
+  </section>
+
+  <!-- ============ GET STARTED ============ -->
+  <div class="act rv" id="start">
+    <div class="halo" aria-hidden="true"></div>
+    <span class="num">EPILOGUE</span>
+    <h2>Your turn</h2>
+    <p>Set it up in about ten minutes, most of it recording gestures.</p>
+  </div>
+
+  <section class="ch stack" id="setup">
+    <ol class="steps">
+      <li class="rv"><div class="txt"><h3>Check what you need</h3><p>A Mac with Apple silicon, Python 3.12 and a camera: the built-in one, or an iPhone through Continuity Camera. Precog picks the first camera that gives a real image.</p></div></li>
+      <li class="rv"><div class="txt"><h3>Install</h3><p>From the project folder, create an environment, install the dependencies and download the hand model (about 8 MB).</p>
+        <div class="code"><button class="copy" type="button">Copy</button><pre><span class="p">$ </span>uv venv -p 3.12 .venv
+<span class="p">$ </span>uv pip install -p .venv -r requirements.txt
+<span class="p">$ </span>curl -L -o hand_landmarker.task \
+    https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task</pre></div></div></li>
+      <li class="rv"><div class="txt"><h3>Grant two permissions</h3><p>In System Settings → Privacy &amp; Security, allow <b>Camera</b> and <b>Accessibility</b> for the terminal app you run Precog from. Then check that everything is wired up:</p>
+        <div class="code"><button class="copy" type="button">Copy</button><pre><span class="p">$ </span>./precog-run doctor</pre></div></div></li>
+      <li class="rv"><div class="txt"><h3>Record the starter pack</h3><p>A guided session suggests swipes, expand, a pointer pose, the telephone and more. A camera window opens and records each gesture six times; you answer <b>n</b> to skip any you don't want.</p>
+        <div class="code"><button class="copy" type="button">Copy</button><pre><span class="p">$ </span>./precog-run setup</pre></div></div></li>
+      <li class="rv"><div class="txt"><h3>Rehearse, then go live</h3><p>The test run shows the camera view with a match meter per gesture and doesn't act on anything. When you're happy, run it for real: no camera window, just the overlay and the ◉ menu-bar item.</p>
+        <div class="code"><button class="copy" type="button">Copy</button><pre><span class="p">$ </span>./precog-run test     <span class="c"># recognise, don't act</span>
+<span class="p">$ </span>./precog-run          <span class="c"># live · ◉ menu bar to quit</span></pre></div></div></li>
+    </ol>
+  </section>
+
+  <section class="ch" id="own">
+    <div class="txt rv">
+      <span class="kicker">Make it yours</span>
+      <h2>Teach a new gesture in a minute</h2>
+      <p>The wizard asks for a name, the kind (pose, movement or two-hand), and what it should do, from a list of 31 actions: Mission Control, any keyboard shortcut, open an app, run a shell command or AppleScript, media keys, window layouts and more.</p>
+      <p>If a gesture fires too easily or not enough, adjust its sensitivity or add more samples instead of starting over.</p>
+    </div>
+    <div class="txt rv d1">
+      <div class="code"><button class="copy" type="button">Copy</button><pre><span class="p">$ </span>./precog-run new                     <span class="c"># guided</span>
+<span class="p">$ </span>./precog-run new circle --kind motion --action mission_control
+<span class="p">$ </span>./precog-run record "swipe left" --append
+<span class="p">$ </span>./precog-run sensitivity "swipe left" 1.3
+<span class="p">$ </span>./precog-run bind "app switch"       <span class="c"># change its action</span>
+<span class="p">$ </span>./precog-run list                    <span class="c"># flags inconsistent samples</span>
+<span class="p">$ </span>./precog-run calibrate               <span class="c"># fit ten-finger standby to you</span></pre></div>
+    </div>
+  </section>
+
+  <section class="ch stack" id="cheat">
+    <div class="txt rv">
+      <span class="kicker">Cheat sheet</span>
+      <h2>Everything on one card</h2>
+    </div>
+    <div class="tablewrap rv">
+      <table>
+        <thead><tr><th>Gesture</th><th>How</th><th>Result</th><th>Mode</th></tr></thead>
+        <tbody>
+          <tr><td>Three-finger swipe</td><td>Index, middle, ring up; move sideways</td><td>Next / previous desktop</td><td><span class="m" style="--c:var(--cyan)">gesture</span></td></tr>
+          <tr><td>Three fingers up / down</td><td>Same pose, move vertically</td><td>Mission Control / App Exposé</td><td><span class="m" style="--c:var(--cyan)">gesture</span></td></tr>
+          <tr><td>Your swipes</td><td>Recorded movements</td><td>Whatever you bound them to</td><td><span class="m" style="--c:var(--cyan)">gesture</span></td></tr>
+          <tr><td>Pointer pose</td><td>Your recorded pose, held</td><td>Enter / leave manipulation</td><td><span class="m" style="--c:var(--amber)">manipulate</span></td></tr>
+          <tr><td>Pinch, release</td><td>Thumb to index tip</td><td>Click (twice = double-click)</td><td><span class="m" style="--c:var(--amber)">manipulate</span></td></tr>
+          <tr><td>Middle pinch</td><td>Thumb to middle tip</td><td>Right-click</td><td><span class="m" style="--c:var(--amber)">manipulate</span></td></tr>
+          <tr><td>Pinch and move</td><td>Over a window</td><td>Drag; edges snap; a fling throws it</td><td><span class="m" style="--c:var(--amber)">manipulate</span></td></tr>
+          <tr><td>Telephone</td><td>Thumb and pinky out</td><td>App strip; move, pinch to open</td><td><span class="m" style="--c:var(--magenta)">app switcher</span></td></tr>
+          <tr><td>Expand</td><td>Hands together, then apart</td><td>Layout grid; point, pinch to apply</td><td><span class="m" style="--c:var(--green)">layout</span></td></tr>
+          <tr><td>Ten fingers</td><td>Both hands spread wide, 0.8 s</td><td>Standby on / off</td><td><span class="m" style="--c:var(--red)">standby</span></td></tr>
+          <tr><td class="k">Lower your hands</td><td class="k">Out of view</td><td class="k">Cancels a picker; leaves manipulation after 2 s</td><td class="k">any</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <span class="sig">PRECOG</span>
+    <span>Built with OpenCV, MediaPipe Hand Landmarker and PyObjC.<br>Desktop switching on macOS 27 ported from <a href="https://github.com/joshuarli/iss">iss</a> (0BSD). Inspired by <i>Minority Report</i> (2002).</span>
+    <a href="#top">Back to top ↑</a>
+  </footer>
+
+</div>
+</main>
+
+<script>
+(() => {
+"use strict";
+const REDUCE = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const C = { cyan: css("--cyan"), ice: css("--ice"), amber: css("--amber"), magenta: css("--magenta"),
+            green: css("--green"), red: css("--red"), mute: css("--mute"), faint: css("--faint"),
+            line: css("--line"), line2: css("--line-2"), panel: css("--panel"), deep: css("--deep"), void: css("--void") };
+const MONO = '400 12px "IBM Plex Mono", ui-monospace, Menlo, monospace';
+const DISP = '"Michroma", ui-sans-serif, sans-serif';
+
+/* ---------------------------------------------------------------- hand model
+   21 points, wrist at the origin, y pointing down, unit = wrist→middle knuckle (Precog's hand size). */
+const OPEN = [[0,0],[-.35,-.15],[-.6,-.35],[-.8,-.5],[-.95,-.65],[-.3,-.9],[-.35,-1.3],[-.38,-1.55],[-.4,-1.75],
+  [0,-1],[0,-1.45],[0,-1.75],[0,-2],[.25,-.92],[.3,-1.3],[.33,-1.55],[.35,-1.75],[.45,-.75],[.55,-1.05],[.6,-1.25],[.65,-1.42]];
+const FING = [[1,2,3,4],[5,6,7,8],[9,10,11,12],[13,14,15,16],[17,18,19,20]];
+const SPREAD = [-.55,-.2,0,.17,.36];
+const BONES = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[0,17],[17,18],[18,19],[19,20]];
+const TIPS = [4,8,12,16,20];
+const lerp = (a,b,t) => a + (b-a)*t;
+const L2 = (p,q,t) => [lerp(p[0],q[0],t), lerp(p[1],q[1],t)];
+const clamp = (x,a=0,b=1) => Math.max(a, Math.min(b, x));
+const ease = t => t<.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2;
+const seg = (ph,a,b) => ease(clamp((ph-a)/(b-a)));
+const dist = (p,q) => Math.hypot(p[0]-q[0], p[1]-q[1]);
+function rot(p,c,a){ const s=Math.sin(a), k=Math.cos(a), x=p[0]-c[0], y=p[1]-c[1]; return [c[0]+x*k-y*s, c[1]+x*s+y*k]; }
+
+const POSES = {
+  open:   {c:[0,0,0,0,0], s:-.15, pinch:0, mid:0},
+  ready:  {c:[0,.18,.1,.12,.15], s:-.1, pinch:0, mid:0},
+  spread: {c:[0,0,0,0,0], s:1, pinch:0, mid:0},
+  fist:   {c:[1,1,1,1,1], s:0, pinch:0, mid:0},
+  three:  {c:[.95,0,0,0,1], s:.1, pinch:0, mid:0},
+  v:      {c:[.95,0,0,1,1], s:.25, pinch:0, mid:0},
+  phone:  {c:[0,1,1,1,0], s:.9, pinch:0, mid:0},
+  pinch:  {c:[0,.3,.12,.12,.15], s:0, pinch:1, mid:0},
+  mid:    {c:[0,.08,.25,.12,.15], s:0, pinch:0, mid:1},
+};
+function mix(A,B,t){ return {c:A.c.map((v,i)=>lerp(v,B.c[i],t)), s:lerp(A.s,B.s,t), pinch:lerp(A.pinch,B.pinch,t), mid:lerp(A.mid,B.mid,t)}; }
+function build(P){
+  const pts = OPEN.map(p => p.slice());
+  FING.forEach((ch,f) => { const a = SPREAD[f]*P.s, piv = pts[ch[0]]; ch.slice(1).forEach(j => pts[j] = rot(pts[j], piv, a)); });
+  for (let f=1; f<5; f++){
+    const c = P.c[f]; if (!c) continue;
+    const [m,a,b,tp] = FING[f], M = pts[m];
+    const d = [pts[tp][0]-M[0], pts[tp][1]-M[1]], n = Math.hypot(d[0],d[1]), u = [d[0]/n, d[1]/n];
+    pts[a]  = L2(pts[a],  [M[0]+u[0]*.34, M[1]+u[1]*.34], c);
+    pts[b]  = L2(pts[b],  [M[0]+u[0]*.2,  M[1]+u[1]*.2+.07], c);
+    pts[tp] = L2(pts[tp], [M[0]+u[0]*.06, M[1]+u[1]*.06+.17], c);
+  }
+  if (P.c[0]){ [[-.36,-.4],[-.16,-.6],[.06,-.66]].forEach((q,i) => pts[i+2] = L2(pts[i+2], q, P.c[0])); }
+  for (const [amt, tip] of [[P.pinch,8],[P.mid,12]]){
+    if (!amt) continue;
+    const tg = pts[tip];
+    pts[3] = L2(pts[3], [(pts[2][0]+tg[0])/2-.06, (pts[2][1]+tg[1])/2+.02], amt*.7);
+    pts[4] = L2(pts[4], tg, amt);
+  }
+  return pts;
+}
+
+/* Precog's own measurements (features.py / desktop_swipe.py / standby.py), on this model */
+const scaleOf = p => dist(p[0], p[9]);
+const extended = (p,f) => { const [,pip,,tip] = FING[f]; return dist(p[tip],p[0]) > 1.25*dist(p[pip],p[0]); };
+const pinchRatio = (p,tip=8) => dist(p[4],p[tip]) / scaleOf(p);
+const fingerGap = p => ([[8,12],[12,16],[16,20]].reduce((s,[a,b]) => s + dist(p[a],p[b]), 0)/3) / scaleOf(p);
+const thumbOut = p => dist(p[4],p[5]) / scaleOf(p);
+const palm = p => [0,5,9,13,17].reduce((s,i)=>[s[0]+p[i][0]/5, s[1]+p[i][1]/5],[0,0]);
+
+/* drawing */
+function hand(ctx, pts, o){
+  const k = o.mirror ? -1 : 1, sc = o.sc, a = o.alpha ?? 1;
+  const P = pts.map(p => [o.x + k*p[0]*sc, o.y + p[1]*sc]);
+  ctx.save();
+  ctx.globalAlpha = a;
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  ctx.shadowColor = o.col; ctx.shadowBlur = o.blur ?? 16;
+  ctx.strokeStyle = o.col; ctx.lineWidth = o.lw ?? Math.max(1.4, sc*.045);
+  ctx.beginPath(); for (const [i,j] of BONES){ ctx.moveTo(P[i][0],P[i][1]); ctx.lineTo(P[j][0],P[j][1]); } ctx.stroke();
+  ctx.shadowBlur = 8;
+  ctx.fillStyle = C.ice;
+  for (let i=0;i<21;i++){ ctx.beginPath(); ctx.arc(P[i][0],P[i][1], TIPS.includes(i) ? Math.max(2.2, sc*.05) : Math.max(1.4, sc*.032), 0, 7); ctx.fill(); }
+  if (o.rings !== false){
+    ctx.strokeStyle = o.col; ctx.lineWidth = 1; ctx.globalAlpha = a*.7;
+    for (const i of TIPS){ ctx.beginPath(); ctx.arc(P[i][0],P[i][1], Math.max(5, sc*.11), 0, 7); ctx.stroke(); }
+  }
+  ctx.restore();
+  return P;
+}
+function rr(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x,y,w,h,r) : ctx.rect(x,y,w,h); }
+function ring(ctx,x,y,r,col,f,lw=3,a0=-Math.PI/2){ ctx.save(); ctx.strokeStyle=col; ctx.lineWidth=lw; ctx.shadowColor=col; ctx.shadowBlur=12; ctx.beginPath(); ctx.arc(x,y,r,a0,a0+Math.PI*2*clamp(f)); ctx.stroke(); ctx.restore(); }
+function reticle(ctx,x,y,r,col,t){
+  ctx.save(); ctx.strokeStyle=col; ctx.shadowColor=col; ctx.shadowBlur=12; ctx.lineWidth=2.2;
+  for (let k=0;k<3;k++){ const a=t*2.4+k*2.094; ctx.beginPath(); ctx.arc(x,y,r,a,a+1.2); ctx.stroke(); }
+  ctx.fillStyle=C.ice; ctx.beginPath(); ctx.arc(x,y,2.6,0,7); ctx.fill(); ctx.restore();
+}
+function label(ctx,s,x,y,col=C.mute,align="left",font=MONO){ ctx.save(); ctx.font=font; ctx.fillStyle=col; ctx.textAlign=align; ctx.textBaseline="middle"; ctx.fillText(s,x,y); ctx.restore(); }
+function glowText(ctx,s,x,y,col,size,align="center"){ ctx.save(); ctx.font=`400 ${size}px ${DISP}`; ctx.fillStyle=col; ctx.shadowColor=col; ctx.shadowBlur=14; ctx.textAlign=align; ctx.textBaseline="middle"; ctx.fillText(s,x,y); ctx.restore(); }
+
+/* ---------------------------------------------------------------- canvas scene runner */
+const scenes = [];
+function scene(canvas, draw, period){
+  if (!canvas) return;
+  const s = { canvas, ctx: canvas.getContext("2d"), draw, period, visible: false, w: 0, h: 0, t0: performance.now() };
+  scenes.push(s);
+  const io = new IntersectionObserver(es => es.forEach(e => s.visible = e.isIntersecting), { rootMargin: "80px" });
+  io.observe(canvas);
+  fit(s);
+  paint(s, REDUCE ? period*.62 : 0);
+  return s;
+}
+function fit(s){
+  const r = s.canvas.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1);
+  const w = Math.round(r.width), h = Math.round(r.height);
+  if (w && h && (w !== s.w || h !== s.h)){ s.w = w; s.h = h; s.canvas.width = w*dpr; s.canvas.height = h*dpr; s.ctx.setTransform(dpr,0,0,dpr,0,0); return true; }
+  return false;
+}
+function paint(s, t){ s.ctx.clearRect(0,0,s.w,s.h); if (s.w) s.draw(s.ctx, s.w, s.h, t); }
+let lastFit = 0;
+function loop(now){
+  const refit = now - lastFit > 400; if (refit) lastFit = now;
+  for (const s of scenes){
+    if (refit && fit(s) && REDUCE) paint(s, s.period*.62);
+    if (!REDUCE && s.visible) paint(s, (now - s.t0)/1000);
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+addEventListener("resize", () => { for (const s of scenes){ if (fit(s) && REDUCE) paint(s, s.period*.62); } });
+
+/* ---------------------------------------------------------------- hero */
+const HERO = [
+  ["open",   "Open hand",          "relaxed — nothing happens"],
+  ["three",  "Three fingers",      "slide between desktops"],
+  ["pinch",  "Pinch",              "click, or grab a window"],
+  ["phone",  "Telephone",          "open the app switcher"],
+  ["spread", "Ten fingers",        "standby on / off"],
+  ["v",      "V sign",             "enter manipulation mode"],
+];
+const pcName = document.getElementById("pc-name"), pcDo = document.getElementById("pc-do");
+let heroIdx = -1, mouse = [0,0];
+addEventListener("pointermove", e => { mouse = [e.clientX/innerWidth - .5, e.clientY/innerHeight - .5]; });
+const dust = Array.from({length: 46}, (_,i) => ({ x: Math.random(), y: Math.random(), r: Math.random()*1.4+.3, v: Math.random()*.012+.004, p: Math.random()*6 }));
+scene(document.getElementById("hero"), (ctx,w,h,t) => {
+  const STEP = 3.4, n = HERO.length, cyc = t / STEP, i = Math.floor(cyc) % n, f = cyc - Math.floor(cyc);
+  const cur = HERO[i], prev = HERO[(i+n-1)%n];
+  const P = mix(POSES[prev[0]], POSES[cur[0]], seg(f, 0, .32));
+  if (i !== heroIdx){ heroIdx = i; pcName.textContent = cur[1]; pcDo.textContent = cur[2]; }
+  // dust
+  for (const d of dust){ const y = (d.y - t*d.v) % 1, yy = (y < 0 ? y+1 : y)*h; ctx.fillStyle = `rgba(92,214,242,${.18+.18*Math.sin(t+d.p)})`; ctx.beginPath(); ctx.arc(d.x*w, yy, d.r, 0, 7); ctx.fill(); }
+  // concentric scanner rings
+  const cx = w*.5 + mouse[0]*18, cy = h*.53 + mouse[1]*12, R = Math.min(w,h);
+  ctx.save(); ctx.strokeStyle = C.line2; ctx.lineWidth = 1;
+  for (const k of [.34,.43]){ ctx.beginPath(); ctx.arc(cx, cy-R*.06, R*k, 0, 7); ctx.stroke(); }
+  ctx.setLineDash([3,9]); ctx.beginPath(); ctx.arc(cx, cy-R*.06, R*.39, t*.15, t*.15+5.2); ctx.stroke(); ctx.restore();
+  const sway = cur[0] === "three" ? Math.sin(seg(f,.35,1)*Math.PI*2)*R*.07 : 0;
+  const pts = build(P), sc = R*.2, hx = cx + sway, hy = cy + R*.25 + Math.sin(t*1.1)*3;
+  const PP = hand(ctx, pts, { x: hx, y: hy, sc, col: C.cyan, blur: 22 });
+  if (cur[0] === "pinch"){ ring(ctx, PP[8][0], PP[8][1], sc*.26, C.amber, seg(f,.15,.6), 3); }
+  if (cur[0] === "spread"){ const pc = palm(pts); ring(ctx, hx + pc[0]*sc, hy + pc[1]*sc, sc*.5, C.red, seg(f,.3,.9), 3); }
+  if (cur[0] === "three" && f > .35){ ctx.save(); ctx.globalAlpha = .5; for (let k=1;k<6;k++){ hand(ctx, pts, { x: hx - k*Math.cos(seg(f,.35,1)*Math.PI*2)*6, y: hy, sc, col: C.cyan, alpha: .08, rings:false, blur:0 }); } ctx.restore(); }
+  // scan line
+  const sy = (t*60) % h; ctx.fillStyle = "rgba(92,214,242,.05)"; ctx.fillRect(0, sy, w, 2);
+  label(ctx, "21 pts · " + (pinchRatio(pts) < .32 ? "pinch" : extended(pts,1)&&extended(pts,2)&&extended(pts,3)&&!extended(pts,4) ? "three fingers" : "tracking"), 22, 26, C.mute);
+  label(ctx, `hand ${sc.toFixed(0)} px`, w-22, 26, C.faint, "right");
+}, 3.4*6);
+
+/* ---------------------------------------------------------------- landmark svg */
+(function(){
+  const g = document.getElementById("lmk-g"), read = document.getElementById("lmk-read"); if (!g) return;
+  const S = 120, P = build(POSES.open).map(([x,y]) => [x*S, y*S + 10]);
+  const NAMES = ["wrist","thumb base","thumb knuckle","thumb joint","thumb tip","index knuckle","index middle joint","index top joint","index tip",
+    "middle knuckle","middle middle joint","middle top joint","middle tip","ring knuckle","ring middle joint","ring top joint","ring tip",
+    "pinky knuckle","pinky middle joint","pinky top joint","pinky tip"];
+  const ns = "http://www.w3.org/2000/svg", el = (n,a) => { const e = document.createElementNS(ns,n); for (const k in a) e.setAttribute(k,a[k]); return e; };
+  const pc = [0,5,9,13,17].reduce((s,i)=>[s[0]+P[i][0]/5,s[1]+P[i][1]/5],[0,0]);
+  g.appendChild(el("polygon",{class:"palm",points:[0,5,9,13,17].map(i=>P[i].join(",")).join(" ")}));
+  const bones = el("path",{class:"bone",d:BONES.map(([a,b])=>`M${P[a][0]} ${P[a][1]}L${P[b][0]} ${P[b][1]}`).join("")});
+  g.appendChild(bones);
+  g.appendChild(el("line",{class:"meas",x1:P[0][0]+22,y1:P[0][1],x2:P[9][0]+22,y2:P[9][1]}));
+  const t1 = el("text",{class:"lab",x:P[0][0]+30,y:(P[0][1]+P[9][1])/2}); t1.textContent = "hand size = 1"; g.appendChild(t1);
+  g.appendChild(el("circle",{cx:pc[0],cy:pc[1],r:5,fill:"none",stroke:"var(--green)","stroke-width":1.6}));
+  const t2 = el("text",{class:"lab g",x:pc[0]-58,y:pc[1]+30}); t2.textContent = "palm centre"; g.appendChild(t2);
+  P.forEach((p,i) => {
+    const gp = el("g",{class:"pt"+([0,4,8,9,12].includes(i)?" key":""),tabindex:0});
+    gp.appendChild(el("circle",{cx:p[0],cy:p[1],r:i%4===0&&i?5.5:4.5}));
+    const dx = i<=4 ? -14 : i>=17 ? 12 : i>=13 ? 10 : 0, dy = i%4===0 && i ? -12 : 0;
+    const tx = el("text",{x:p[0]+(dx||10),y:p[1]+(dy||4),"text-anchor":dx<0?"end":"start"}); tx.textContent = i; gp.appendChild(tx);
+    const show = () => { g.querySelectorAll(".pt.on").forEach(x=>x.classList.remove("on")); gp.classList.add("on"); read.innerHTML = `<b>${i}</b> · ${NAMES[i]}`; };
+    gp.addEventListener("pointerenter", show); gp.addEventListener("focus", show);
+    g.appendChild(gp);
+  });
+  const len = bones.getTotalLength ? bones.getTotalLength() : 2000;
+  bones.style.strokeDasharray = len; bones.style.strokeDashoffset = 0;
+  const fig = g.closest("figure");
+  if (!REDUCE && fig && fig.getBoundingClientRect().top > innerHeight){
+    bones.style.strokeDashoffset = len;
+    new IntersectionObserver((es,o) => es.forEach(e => { if (e.isIntersecting){ bones.style.transition = "stroke-dashoffset 2.4s cubic-bezier(.45,.05,.2,1) .3s"; bones.style.strokeDashoffset = 0; o.disconnect(); } }), {threshold:.4}).observe(fig);
+  }
+})();
+
+/* ---------------------------------------------------------------- normalisation */
+scene(document.getElementById("norm"), (ctx,w,h,t) => {
+  const T = 7, ph = (t % T)/T, pts = build(POSES.open);
+  const a = seg(ph,.18,.42), b = seg(ph,.5,.74), out = 1 - seg(ph,.9,1);
+  const nearS = h*.26, farS = h*.12, normS = h*.17;
+  const A = { x: lerp(w*.27, w*.5, a), y: lerp(h*.86, h*.74, a), sc: lerp(nearS, normS, b) };
+  const B = { x: lerp(w*.76, w*.5, a), y: lerp(h*.56, h*.74, a), sc: lerp(farS, normS, b) };
+  ctx.save(); ctx.strokeStyle = C.line; ctx.setLineDash([2,6]);
+  ctx.beginPath(); ctx.moveTo(w*.5, h*.06); ctx.lineTo(w*.5, h*.94); ctx.stroke(); ctx.restore();
+  hand(ctx, pts, { ...A, col: C.cyan, alpha: out });
+  hand(ctx, pts, { ...B, col: C.amber, alpha: out*(b > .98 ? .85 : 1) });
+  const steps = ["raw: near + far", "→ wrist to origin", "→ divide by hand size", "same shape"];
+  const si = ph < .18 ? 0 : ph < .46 ? 1 : ph < .78 ? 2 : 3;
+  label(ctx, steps[si], 20, 24, si === 3 ? C.green : C.mute);
+  label(ctx, `near ${(lerp(nearS,normS,b)/normS).toFixed(2)}× · far ${(lerp(farS,normS,b)/normS).toFixed(2)}×`, w-20, 24, C.faint, "right");
+}, 7);
+
+/* ---------------------------------------------------------------- three kinds */
+scene(document.getElementById("kinds-c"), (ctx,w,h,t) => {
+  const cols = [w/6, w/2, w*5/6], y = h*.66, sc = Math.min(w/14, h*.16);
+  ctx.save(); ctx.strokeStyle = C.line; for (const x of [w/3, w*2/3]){ ctx.beginPath(); ctx.moveTo(x, h*.1); ctx.lineTo(x, h*.9); ctx.stroke(); } ctx.restore();
+  // pose: V held, hold ring
+  const ph = (t % 3)/3, v = build(POSES.v);
+  hand(ctx, v, { x: cols[0], y, sc, col: C.cyan });
+  ring(ctx, cols[0], y - sc*1.05, sc*1.45, C.cyan, clamp(ph/.5), 2);
+  label(ctx, ph < .5 ? "holding…" : "fired", cols[0], h*.9, ph < .5 ? C.mute : C.green, "center");
+  label(ctx, "POSE", cols[0], h*.1, C.ice, "center");
+  // movement: swipe with trail
+  const m = (t % 2.6)/2.6, sx = lerp(cols[1] + w*.09, cols[1] - w*.09, seg(m,.15,.7)), o = build(POSES.open);
+  for (let k=6;k>0;k--){ const mm = clamp(m - k*.03); hand(ctx, o, { x: lerp(cols[1]+w*.09, cols[1]-w*.09, seg(mm,.15,.7)), y, sc, col: C.cyan, alpha: .07, rings:false, blur:0 }); }
+  hand(ctx, o, { x: sx, y, sc, col: C.cyan });
+  label(ctx, "shape + path", cols[1], h*.9, C.mute, "center");
+  label(ctx, "MOVEMENT", cols[1], h*.1, C.ice, "center");
+  // two-hand: expand
+  const e = (t % 3.2)/3.2, gap = lerp(.25, 1.6, seg(e,.2,.65)) * sc;
+  hand(ctx, o, { x: cols[2] - gap, y, sc: sc*.85, col: C.green, mirror: true });
+  hand(ctx, o, { x: cols[2] + gap, y, sc: sc*.85, col: C.green });
+  ctx.save(); ctx.strokeStyle = C.green; ctx.setLineDash([3,5]); ctx.beginPath(); ctx.moveTo(cols[2]-gap, y+sc*.25); ctx.lineTo(cols[2]+gap, y+sc*.25); ctx.stroke(); ctx.restore();
+  label(ctx, `gap ${(gap/sc).toFixed(1)} hands`, cols[2], h*.9, C.mute, "center");
+  label(ctx, "TWO HANDS", cols[2], h*.1, C.ice, "center");
+}, 6);
+
+/* ---------------------------------------------------------------- DTW */
+(function(){
+  const N = 16, M = 26, sm = x => x*x*(3-2*x);
+  const rec = Array.from({length:N}, (_,i) => sm(i/(N-1)));
+  const live = Array.from({length:M}, (_,j) => { const u = Math.pow(j/(M-1), 1.7); return sm(u) + Math.sin(j*1.7)*.012; });
+  const cost = rec.map(a => live.map(b => Math.abs(a-b)));
+  const band = Math.max(2, Math.floor(M/4));
+  const D = Array.from({length:N+1}, () => Array(M+1).fill(Infinity)); D[0][0] = 0;
+  for (let i=1;i<=N;i++) for (let j=1;j<=M;j++){ if (Math.abs(i*M/N - j) > band) continue; D[i][j] = cost[i-1][j-1] + Math.min(D[i-1][j-1], D[i-1][j], D[i][j-1]); }
+  const path = []; let i = N, j = M;
+  while (i > 0 && j > 0){ path.push([i-1,j-1]); const opts = [[D[i-1][j-1],i-1,j-1],[D[i-1][j],i-1,j],[D[i][j-1],i,j-1]].sort((a,b)=>a[0]-b[0]); [,i,j] = opts[0]; }
+  path.reverse();
+  const score = (D[N][M]/N).toFixed(3);
+  scene(document.getElementById("dtw-c"), (ctx,w,h,t) => {
+    const T = 6, ph = (t % T)/T, pad = 34, top = h*.16, bot = h*.6, amp = h*.22;
+    const X1 = k => pad + k/(N-1)*(w-2*pad), X2 = k => pad + k/(M-1)*(w-2*pad);
+    const Y1 = v => top + amp - v*amp, Y2 = v => bot + amp - v*amp;
+    const shown = Math.floor(seg(ph,.08,.7) * path.length), fade = 1 - seg(ph,.9,1);
+    ctx.save(); ctx.globalAlpha = fade;
+    ctx.strokeStyle = "rgba(255,170,59,.55)"; ctx.lineWidth = 1;
+    for (let k=0;k<shown;k++){ const [a,b] = path[k]; ctx.beginPath(); ctx.moveTo(X1(a), Y1(rec[a])); ctx.lineTo(X2(b), Y2(live[b])); ctx.stroke(); }
+    ctx.restore();
+    for (const [arr, X, Y, col] of [[rec, X1, Y1, C.cyan],[live, X2, Y2, C.green]]){
+      ctx.save(); ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.shadowColor = col; ctx.shadowBlur = 10; ctx.beginPath();
+      arr.forEach((v,k) => k ? ctx.lineTo(X(k),Y(v)) : ctx.moveTo(X(k),Y(v))); ctx.stroke();
+      ctx.fillStyle = C.ice; ctx.shadowBlur = 4; arr.forEach((v,k) => { ctx.beginPath(); ctx.arc(X(k),Y(v),2.2,0,7); ctx.fill(); }); ctx.restore();
+    }
+    label(ctx, "recorded · 16 steps", pad, top - 12, C.cyan);
+    label(ctx, "live · slower start", pad, bot - 12, C.green);
+    const done = shown >= path.length;
+    label(ctx, done ? `distance ${score}  <  threshold 0.50  →  match` : `pairing ${shown}/${path.length}`, w/2, h*.93, done ? C.ice : C.mute, "center");
+  }, 6);
+})();
+
+/* ---------------------------------------------------------------- calibration svg */
+(function(){
+  const g = document.getElementById("cal-g"); if (!g) return;
+  const ns = "http://www.w3.org/2000/svg", el = (n,a,txt) => { const e = document.createElementNS(ns,n); for (const k in a) e.setAttribute(k,a[k]); if (txt) e.textContent = txt; return e; };
+  const pts = [[205,170],[232,150],[248,186],[220,206],[262,160],[420,92]];
+  const nn = pts.map((p,i) => { let b=-1, d=1e9; pts.forEach((q,j) => { if (j!==i){ const dd = Math.hypot(p[0]-q[0],p[1]-q[1]); if (dd<d){ d=dd; b=j; } } }); return [b,d]; });
+  const med = [...nn.map(x=>x[1])].sort((a,b)=>a-b)[2];
+  g.appendChild(el("circle",{cx:234,cy:174,r:96,fill:"rgba(92,214,242,.06)",stroke:"var(--cyan)","stroke-width":1.4,"stroke-dasharray":"4 6",class:"cal-ring"}));
+  g.appendChild(el("text",{x:234,y:60,"text-anchor":"middle",fill:"var(--cyan)","font-family":"IBM Plex Mono, monospace","font-size":12},"threshold = spread × 1.4 + 0.15"));
+  pts.forEach((p,i) => { const q = pts[nn[i][0]]; g.appendChild(el("line",{x1:p[0],y1:p[1],x2:q[0],y2:q[1],stroke: i===5 ? "var(--red)" : "var(--faint)","stroke-width":1.2,"stroke-dasharray": i===5 ? "3 5":"none"})); });
+  pts.forEach((p,i) => {
+    g.appendChild(el("circle",{cx:p[0],cy:p[1],r:i===5?8:7,fill:i===5?"var(--void)":"var(--cyan)",stroke:i===5?"var(--red)":"var(--ice)","stroke-width":1.6,style:"filter:drop-shadow(0 0 6px "+(i===5?"#FF6B6E":"#5CD6F2")+")"}));
+    g.appendChild(el("text",{x:p[0]+(i===5?0:12),y:p[1]+(i===5?-16:4),"text-anchor":i===5?"middle":"start",fill:"var(--mute)","font-family":"IBM Plex Mono, monospace","font-size":11},"s"+(i+1)));
+  });
+  g.appendChild(el("text",{x:420,y:130,"text-anchor":"middle",fill:"var(--red)","font-family":"IBM Plex Mono, monospace","font-size":11.5},"ignored"));
+  g.appendChild(el("text",{x:420,y:146,"text-anchor":"middle",fill:"var(--mute)","font-family":"IBM Plex Mono, monospace","font-size":11},`${(nn[5][1]/med).toFixed(1)}× median spread`));
+  g.appendChild(el("text",{x:30,y:330,fill:"var(--mute)","font-family":"IBM Plex Mono, monospace","font-size":11.5},"poses: 0.18 – 0.45     movements: 0.35 – 1.2"));
+  const ringEl = g.querySelector(".cal-ring");
+  if (!REDUCE){ ringEl.animate([{r:96,opacity:1},{r:101,opacity:.65},{r:96,opacity:1}],{duration:4200,iterations:Infinity,easing:"ease-in-out"}); }
+})();
+
+/* ---------------------------------------------------------------- gallery scenes */
+const SCENES = {
+  swipe(ctx,w,h,t){
+    const T = 5, ph = (t % T)/T;
+    const fx = w*.1, fy = h*.1, fw = w*.8, fh = h*.46;
+    let p = lerp(0, .62, seg(ph,.12,.5)); if (ph > .55) p = lerp(.62, 1, seg(ph,.55,.68));
+    const reset = seg(ph,.9,1);
+    ctx.save(); rr(ctx, fx, fy, fw, fh, 10); ctx.strokeStyle = C.line2; ctx.stroke(); ctx.clip();
+    for (const [k, col, name] of [[0, "#0F2033", "Desktop 1"], [1, "#16182E", "Desktop 2"]]){
+      const x = fx + (k - p)*fw * (1-reset) + (reset ? 0 : 0);
+      ctx.globalAlpha = 1 - (k===1 ? reset : 0);
+      ctx.fillStyle = col; ctx.fillRect(x, fy, fw, fh);
+      ctx.fillStyle = "rgba(92,214,242,.10)"; rr(ctx, x + fw*.12, fy + fh*.2, fw*.36, fh*.5, 6); ctx.fill();
+      ctx.fillStyle = "rgba(229,123,255,.10)"; rr(ctx, x + fw*.54, fy + fh*.3, fw*.3, fh*.46, 6); ctx.fill();
+      label(ctx, name, x + 12, fy + 14, C.mute);
+    }
+    ctx.restore();
+    const bx = w*.3, bw = w*.4, by = fy + fh + 18;
+    ctx.fillStyle = C.line; rr(ctx, bx, by, bw, 5, 3); ctx.fill();
+    ctx.fillStyle = p >= .33 ? C.green : C.cyan; rr(ctx, bx + bw/2 - Math.min(p,1)*bw/2, by, Math.min(p,1)*bw/2, 5, 3); ctx.fill();
+    ctx.fillStyle = C.ice; ctx.fillRect(bx + bw/2 - .33*bw/2, by - 4, 1, 13);
+    const hx = lerp(w*.66, w*.34, Math.min(p, .62)/.62) ;
+    hand(ctx, build(POSES.three), { x: hx, y: h*.98, sc: h*.17, col: C.cyan, alpha: 1 - seg(ph,.6,.72) + seg(ph,.92,1) });
+    label(ctx, p >= 1 ? "→ Desktop 2" : p >= .33 ? "release → next" : "◀ desktop ▶", w/2, by + 22, p >= .33 ? C.green : C.mute, "center");
+  },
+  click(ctx,w,h,t){
+    const T = 3.4, ph = (t % T)/T, pinch = seg(ph,.22,.48) * (1 - seg(ph,.6,.7));
+    const bx = w*.18, by = h*.24, bw = w*.34, bh = h*.17, cx = bx + bw*.5, cy = by + bh*.5;
+    const clicked = ph > .62 && ph < .9;
+    ctx.save(); rr(ctx, bx, by, bw, bh, 10); ctx.fillStyle = clicked ? "rgba(255,170,59,.22)" : "rgba(255,255,255,.03)"; ctx.fill(); ctx.strokeStyle = clicked ? C.amber : C.line2; ctx.stroke(); ctx.restore();
+    label(ctx, clicked ? "Clicked" : "Button", cx, cy, clicked ? C.ice : C.mute, "center");
+    const P = mix(POSES.ready, POSES.pinch, pinch), pts = build(P);
+    reticle(ctx, cx, cy - bh*.9, pinch > .95 ? 11 : 19, C.amber, t);
+    if (pinch < .97) ring(ctx, cx, cy - bh*.9, 27, C.ice, pinch, 2.5);
+    if (clicked){ const k = seg(ph,.62,.9); ctx.save(); ctx.strokeStyle = C.amber; ctx.globalAlpha = 1-k; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy - bh*.9, 20 + k*40, 0, 7); ctx.stroke(); ctx.restore(); }
+    hand(ctx, pts, { x: w*.72, y: h*.95, sc: h*.2, col: C.amber });
+    label(ctx, `pinch ${pinchRatio(pts).toFixed(2)}`, w*.72, h*.12, pinchRatio(pts) < .32 ? C.amber : C.mute, "center");
+  },
+  drag(ctx,w,h,t){
+    const T = 6.5, ph = (t % T)/T;
+    const sx = w*.06, sy = h*.07, sw = w*.88, sh = h*.6;
+    ctx.save(); rr(ctx, sx, sy, sw, sh, 10); ctx.strokeStyle = C.line2; ctx.stroke(); ctx.restore();
+    const pinch = seg(ph,.08,.18) * (1 - seg(ph,.6,.66));
+    const move = seg(ph,.2,.55);
+    let wx = lerp(sx + sw*.48, sx + 2, move), wy = lerp(sy + sh*.22, sy + sh*.3, move), ww = sw*.4, wh = sh*.5;
+    const snapped = ph > .6 && ph < .92, snapK = seg(ph,.6,.72);
+    if (snapped){ wx = lerp(wx, sx, snapK); wy = lerp(wy, sy, snapK); ww = lerp(ww, sw/2, snapK); wh = lerp(wh, sh, snapK); }
+    if (move > .97 && ph < .62){ ctx.save(); rr(ctx, sx+4, sy+4, sw/2-8, sh-8, 8); ctx.fillStyle = "rgba(125,240,160,.10)"; ctx.fill(); ctx.strokeStyle = C.green; ctx.shadowColor = C.green; ctx.shadowBlur = 14; ctx.lineWidth = 2; ctx.stroke(); ctx.restore(); label(ctx, "SNAP", sx + sw/4, sy + sh/2, C.green, "center"); }
+    const fade = 1 - seg(ph,.92,1);
+    ctx.save(); ctx.globalAlpha = fade; rr(ctx, wx, wy, ww, wh, 8); ctx.fillStyle = "#13233A"; ctx.fill(); ctx.strokeStyle = pinch > .5 && !snapped ? C.amber : C.line2; ctx.lineWidth = pinch > .5 && !snapped ? 2 : 1; ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,.06)"; ctx.fillRect(wx, wy, ww, 14); ctx.restore();
+    const rx = wx + ww*.3, ry = wy + 7;
+    reticle(ctx, rx, ry, pinch > .9 ? 9 : 15, C.amber, t);
+    hand(ctx, build(mix(POSES.ready, POSES.pinch, pinch)), { x: rx + w*.16, y: ry + h*.5, sc: h*.15, col: C.amber, alpha: fade });
+  },
+  switcher(ctx,w,h,t){
+    const T = 7.5, ph = (t % T)/T;
+    const open = seg(ph,.1,.18) * (1 - seg(ph,.78,.86));
+    const shape = ph < .2 ? mix(POSES.open, POSES.phone, seg(ph,0,.12)) : mix(POSES.phone, POSES.ready, seg(ph,.2,.3));
+    const pinch = seg(ph,.6,.66) * (1 - seg(ph,.72,.76));
+    const P = mix(shape, POSES.pinch, pinch);
+    const n = 6, tile = Math.min(w*.11, 54), gap = 8, tot = n*tile + (n-1)*gap, x0 = w/2 - tot/2, y0 = h*.18;
+    const sel = 1 + Math.round(seg(ph,.32,.56)*2);
+    const cols = ["#5CD6F2","#E57BFF","#FFAA3B","#7DF0A0","#8FA8FF","#FF6B6E"];
+    if (open > .01){
+      ctx.save(); ctx.globalAlpha = open; rr(ctx, x0 - 14, y0 - 14, tot + 28, tile + 40, 14); ctx.fillStyle = "rgba(8,6,20,.85)"; ctx.fill(); ctx.strokeStyle = C.magenta; ctx.lineWidth = 1; ctx.stroke();
+      for (let k=0;k<n;k++){
+        const x = x0 + k*(tile+gap), on = k === sel, picked = on && ph > .64 && ph < .8;
+        ctx.save(); if (on){ ctx.shadowColor = C.magenta; ctx.shadowBlur = 18; }
+        rr(ctx, x, y0, tile, tile, 11); ctx.fillStyle = on ? "rgba(229,123,255,.18)" : "rgba(255,255,255,.03)"; ctx.fill();
+        ctx.strokeStyle = on ? C.magenta : "rgba(255,255,255,.08)"; ctx.lineWidth = on ? 2 : 1; ctx.stroke(); ctx.restore();
+        const s = tile*(picked ? .62 : .5); rr(ctx, x + (tile-s)/2, y0 + (tile-s)/2, s, s, s*.28); ctx.fillStyle = cols[k]; ctx.globalAlpha = open*(on ? 1 : .5); ctx.fill(); ctx.globalAlpha = open;
+      }
+      const cu = x0 + (sel + .5)/n*tot; ctx.fillStyle = C.ice; ctx.beginPath(); ctx.arc(cu, y0 + tile + 16, 3, 0, 7); ctx.fill();
+      ctx.restore();
+    }
+    const hx = lerp(w*.42, w*.58, seg(ph,.32,.56));
+    hand(ctx, build(P), { x: hx, y: h*.98, sc: h*.17, col: C.magenta });
+    label(ctx, ph < .2 ? "telephone pose" : ph < .32 ? "locked open · relax" : ph < .6 ? "move to choose" : ph < .8 ? "pinch → open" : "", w/2, h*.08, C.mute, "center");
+  },
+  layout(ctx,w,h,t){
+    const T = 7.5, ph = (t % T)/T, sc = h*.15;
+    const apart = seg(ph,.06,.26), gridOn = seg(ph,.28,.34) * (1 - seg(ph,.8,.88));
+    const gx = w*.5, gy = h*.32, cell = Math.min(w*.075, 34), gp = 5;
+    const sel = ph > .5 ? 5 : 4, pinch = seg(ph,.62,.68) * (1 - seg(ph,.74,.78));
+    if (gridOn > .01){
+      // preview of the target on a mini screen
+      ctx.save(); ctx.globalAlpha = gridOn;
+      const sx = w*.06, sy = h*.06, sw = w*.88, sh = h*.5;
+      rr(ctx, sx, sy, sw, sh, 10); ctx.strokeStyle = C.line2; ctx.stroke();
+      const pr = sel === 5 ? [sx + sw/2, sy, sw/2, sh] : [sx, sy, sw, sh];
+      rr(ctx, pr[0]+5, pr[1]+5, pr[2]-10, pr[3]-10, 8); ctx.fillStyle = "rgba(125,240,160,.08)"; ctx.fill(); ctx.strokeStyle = C.green; ctx.shadowColor = C.green; ctx.shadowBlur = 14; ctx.lineWidth = 2; ctx.stroke();
+      ctx.shadowBlur = 0;
+      const tot = 3*cell + 2*gp, x0 = gx - tot/2, y0 = gy - tot/2;
+      rr(ctx, x0 - 10, y0 - 10, tot + 20, tot + 20, 10); ctx.fillStyle = "rgba(4,14,10,.9)"; ctx.fill();
+      const L = [[0,0,.5,.5],[0,0,1,.5],[.5,0,.5,.5],[0,0,.5,1],[0,0,1,1],[.5,0,.5,1],[0,.5,.5,.5],[.15,.1,.7,.8],[.5,.5,.5,.5]];
+      L.forEach((l,k) => { const cx = x0 + (k%3)*(cell+gp), cy = y0 + Math.floor(k/3)*(cell+gp), on = k === sel;
+        rr(ctx, cx, cy, cell, cell, 6); ctx.strokeStyle = on ? C.green : "rgba(255,255,255,.1)"; ctx.lineWidth = on ? 2 : 1; ctx.stroke();
+        const m = 6; rr(ctx, cx + m + l[0]*(cell-2*m), cy + m + l[1]*(cell-2*m), l[2]*(cell-2*m), l[3]*(cell-2*m), 2); ctx.fillStyle = on ? "rgba(125,240,160,.6)" : "rgba(92,214,242,.2)"; ctx.fill(); });
+      label(ctx, sel === 5 ? "RIGHT HALF" : "MAXIMIZE", gx, y0 + tot + 22, C.ice, "center");
+      ctx.restore();
+    }
+    const gap = lerp(.2, 1.3, apart) * sc, drift = seg(ph,.4,.52)*w*.07;
+    const shp = mix(POSES.open, POSES.pinch, pinch);
+    hand(ctx, build(POSES.open), { x: w/2 - gap, y: h*.99, sc, col: C.green, mirror: true, alpha: 1 - seg(ph,.36,.44)*.7 });
+    hand(ctx, build(shp), { x: w/2 + gap + drift, y: h*.99, sc, col: C.green });
+  },
+  standby(ctx,w,h,t){
+    const T = 6.5, ph = (t % T)/T, sc = h*.2;
+    const on1 = seg(ph,0,.06) * (1 - seg(ph,.44,.5)), on2 = seg(ph,.56,.62) * (1 - seg(ph,.94,1));
+    const a = Math.max(on1, on2), spread = build(POSES.spread);
+    hand(ctx, spread, { x: w*.3, y: h*.82, sc, col: on2 > on1 ? C.green : C.red, mirror: true, alpha: a });
+    hand(ctx, spread, { x: w*.7, y: h*.82, sc, col: on2 > on1 ? C.green : C.red, alpha: a });
+    const f1 = seg(ph,.08,.32), f2 = seg(ph,.64,.88);
+    const standby = ph > .32 && ph < .88;
+    if (ph < .44) ring(ctx, w/2, h*.36, h*.13, C.red, f1, 4);
+    if (ph > .6) ring(ctx, w/2, h*.36, h*.13, C.green, f2, 4);
+    glowText(ctx, standby ? "STANDBY" : "ACTIVE", w/2, h*.36, standby ? C.red : C.cyan, Math.max(10, h*.05));
+    label(ctx, ph < .5 ? "ten fingers, hold 0.8 s" : ph < .56 ? "gestures ignored" : "ten fingers again", w/2, h*.1, C.mute, "center");
+  },
+};
+document.querySelectorAll("canvas[data-scene]").forEach(c => scene(c, SCENES[c.dataset.scene], 7));
+
+/* ---------------------------------------------------------------- desktop events */
+(function(){
+  const log = document.getElementById("evlog"); let lastLine = "";
+  scene(document.getElementById("spaces-c"), (ctx,w,h,t) => {
+    const T = 9, ph = (t % T)/T;
+    const longRun = ph < .5, q = longRun ? ph/.5 : (ph-.5)/.5;
+    let p, lines = [];
+    if (longRun){ p = lerp(0, -.55, seg(q,.12,.55)); if (q > .62) p = lerp(-.55, -1, seg(q,.62,.78)); }
+    else { p = lerp(0, -.2, seg(q,.12,.45)); if (q > .55) p = lerp(-.2, 0, seg(q,.55,.72)); }
+    const fx = w*.08, fy = h*.12, fw = w*.84, fh = h*.56;
+    ctx.save(); rr(ctx, fx, fy, fw, fh, 12); ctx.strokeStyle = C.line2; ctx.stroke(); ctx.clip();
+    [["#0F2033","1"],["#16182E","2"]].forEach(([col,name],k) => { const x = fx + (k + p)*fw; ctx.fillStyle = col; ctx.fillRect(x, fy, fw, fh);
+      ctx.fillStyle = "rgba(92,214,242,.08)"; rr(ctx, x+fw*.1, fy+fh*.18, fw*.4, fh*.56, 8); ctx.fill(); label(ctx, "Desktop " + name, x + 14, fy + 16, C.mute); });
+    ctx.restore();
+    const hx = lerp(w*.66, w*.3, Math.min(-p, .55)/.55);
+    const vis = longRun ? 1 - seg(q,.58,.64) : 1 - seg(q,.5,.56);
+    hand(ctx, build(POSES.three), { x: hx, y: h*1.02, sc: h*.17, col: C.cyan, alpha: vis });
+    label(ctx, `progress ${p.toFixed(2)}`, fx + fw - 10, fy + fh + 18, Math.abs(p) >= .33 ? C.green : C.cyan, "right");
+    label(ctx, longRun ? "long swipe" : "short swipe", fx + 10, fy + fh + 18, C.faint);
+    if (q < .12) lines = ["waiting for three fingers…"];
+    else if (longRun) lines = ["Began", `Changed  ${Math.max(p,-.55).toFixed(2)}`].concat(q > .58 ? ["Ended    → next desktop"] : []);
+    else lines = ["Began", `Changed  ${Math.max(p,-.2).toFixed(2)}`].concat(q > .5 ? ["Cancelled → springs back"] : []);
+    const s = lines.join("\n");
+    if (log && s !== lastLine){ lastLine = s; log.innerHTML = lines.map((l,i) => `<div style="color:${i===lines.length-1 ? (l.includes("next") ? C.green : l.includes("springs") ? C.amber : C.ice) : C.mute}">${l}</div>`).join(""); }
+  }, 9);
+})();
+
+/* ---------------------------------------------------------------- pinch timeline */
+scene(document.getElementById("pinch-c"), (ctx,w,h,t) => {
+  const T = 6, ph = (t % T)/T, pad = 40, x0 = pad, x1 = w - pad, y0 = h*.12, y1 = h*.78;
+  const r = u => { if (u < .2) return 1.05; if (u < .45) return lerp(1.05, .12, ease((u-.2)/.25)); if (u < .7) return .12 + Math.sin(u*40)*.015; if (u < .85) return lerp(.12, 1, ease((u-.7)/.15)); return 1; };
+  const Y = v => y1 - v/1.15*(y1-y0), X = u => lerp(x0, x1, u);
+  for (const [v, col, name] of [[.32, C.amber, "press 0.32"], [.48, C.faint, "release 0.48"], [.6, C.line2, "cursor slows < 0.6"]]){
+    ctx.save(); ctx.setLineDash([4,6]); ctx.strokeStyle = col; ctx.beginPath(); ctx.moveTo(x0, Y(v)); ctx.lineTo(x1, Y(v)); ctx.stroke(); ctx.restore();
+    label(ctx, name, x1, Y(v) - 9, col === C.line2 ? C.faint : col, "right");
+  }
+  const upto = Math.min(ph/.85, 1);
+  ctx.save(); ctx.strokeStyle = C.cyan; ctx.lineWidth = 2.2; ctx.shadowColor = C.cyan; ctx.shadowBlur = 10; ctx.beginPath();
+  for (let k=0;k<=200*upto;k++){ const u = k/200; k ? ctx.lineTo(X(u), Y(r(u))) : ctx.moveTo(X(u), Y(r(u))); } ctx.stroke(); ctx.restore();
+  // pressed band + click marker
+  let pressedAt = null, releasedAt = null; for (let k=0;k<=200;k++){ const u = k/200; if (pressedAt === null && r(u) < .32) pressedAt = u; if (pressedAt !== null && releasedAt === null && u > pressedAt && r(u) > .48) releasedAt = u; }
+  if (upto > pressedAt){ ctx.fillStyle = "rgba(255,170,59,.08)"; ctx.fillRect(X(pressedAt), y0, X(Math.min(upto, releasedAt)) - X(pressedAt), y1 - y0); label(ctx, "cursor frozen", X(pressedAt) + 8, y0 + 12, C.amber); }
+  if (upto > releasedAt){ ctx.save(); ctx.strokeStyle = C.green; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X(releasedAt), y0); ctx.lineTo(X(releasedAt), y1); ctx.stroke(); ctx.restore(); label(ctx, "click", X(releasedAt) + 8, y0 + 12, C.green); }
+  label(ctx, "time →", x0, h*.9, C.faint);
+  label(ctx, "a slow, deliberate pinch (~1 s) still clicks", x1, h*.9, C.mute, "right");
+  const head = r(upto); ctx.fillStyle = C.ice; ctx.beginPath(); ctx.arc(X(upto), Y(head), 3.5, 0, 7); ctx.fill();
+}, 6);
+
+/* ---------------------------------------------------------------- pose lab */
+(function(){
+  const canvas = document.getElementById("lab-c"); if (!canvas) return;
+  const slidersEl = document.getElementById("sliders"), readout = document.getElementById("readout"), verdict = document.getElementById("verdict");
+  const KEYS = [["thumb","curl 0"],["index","curl 1"],["middle","curl 2"],["ring","curl 3"],["pinky","curl 4"],["spread","s"],["pinch","pinch"]];
+  let target = JSON.parse(JSON.stringify(POSES.open)), cur = JSON.parse(JSON.stringify(POSES.open));
+  const inputs = {};
+  KEYS.forEach(([name], k) => {
+    const id = "lab-" + name, lab = document.createElement("label"); lab.htmlFor = id; lab.textContent = name;
+    const inp = document.createElement("input"); inp.type = "range"; inp.id = id; inp.min = name === "spread" ? -0.3 : 0; inp.max = 1; inp.step = .01;
+    const out = document.createElement("output"); out.htmlFor = id;
+    inp.addEventListener("input", () => { setVal(k, +inp.value); chips.forEach(c => c.setAttribute("aria-pressed","false")); update(); });
+    slidersEl.append(lab, inp, out); inputs[k] = [inp, out];
+  });
+  const getVal = (P,k) => k < 5 ? P.c[k] : k === 5 ? P.s : P.pinch;
+  function setVal(k, v){ if (k < 5) target.c[k] = v; else if (k === 5) target.s = v; else target.pinch = v; }
+  function syncInputs(){ KEYS.forEach((_,k) => { const v = getVal(target,k); inputs[k][0].value = v; inputs[k][1].textContent = v.toFixed(2); }); }
+  const chips = [...document.querySelectorAll(".chip[data-pose]")];
+  chips.forEach(ch => ch.addEventListener("click", () => { target = JSON.parse(JSON.stringify(POSES[ch.dataset.pose])); chips.forEach(c => c.setAttribute("aria-pressed", String(c === ch))); syncInputs(); update(); }));
+  function verdictFor(p){
+    const ext = [1,2,3,4].map(f => extended(p,f)), pr = pinchRatio(p), mr = pinchRatio(p,12), gap = fingerGap(p), th = thumbOut(p);
+    const three = ext[0] && ext[1] && ext[2] && !ext[3];
+    if (mr < .32 && mr < .8*pr && ext[0]) return ["Manipulation mode", "Right-click. Thumb meets the middle fingertip while the index stays out."];
+    if (pr < .32) return ["Manipulation mode", `Click on release. Pinch distance ${pr.toFixed(2)} is under 0.32; the cursor is frozen until you let go.`];
+    if (three) return ["Gesture mode", "Three-finger swipe is armed. Move sideways to slide desktops, up for Mission Control."];
+    if (ext.every(Boolean) && gap >= .46 && th >= .85) return ["Any mode", "Spread wide enough for standby. Show it with both hands and hold for 0.8 s."];
+    if (ext.every(Boolean)) return ["Gesture mode", `A normal open hand. Finger gap ${gap.toFixed(2)} is below the 0.46 standby threshold, so swipes and expand are safe.`];
+    if (!ext[0] && !ext[1] && !ext[2] && ext[3]) return ["Your recorded pose", "This is the telephone shape. Recorded as a pose, it opens the app switcher."];
+    if (ext[0] && ext[1] && !ext[2] && !ext[3]) return ["Your recorded pose", "A V sign. Recorded as your pointer pose, it toggles manipulation mode."];
+    if (!ext.some(Boolean)) return ["Nothing", "A fist. No built-in gesture uses it, and in the pickers it never counts as a pinch."];
+    return ["Nothing built in", "No built-in gesture matches. Record it as a pose to give it an action."];
+  }
+  function update(){
+    const p = build(target), ext = [1,2,3,4].map(f => extended(p,f));
+    const rows = [
+      ["fingers out", ["index","middle","ring","pinky"].map((n,i)=> (ext[i] ? "●" : "○")).join(" "), false],
+      ["pinch (thumb–index)", pinchRatio(p).toFixed(2), pinchRatio(p) < .32],
+      ["pinch (thumb–middle)", pinchRatio(p,12).toFixed(2), pinchRatio(p,12) < .32],
+      ["finger gap", fingerGap(p).toFixed(2), fingerGap(p) >= .46],
+      ["thumb out", thumbOut(p).toFixed(2), thumbOut(p) >= .85],
+    ];
+    readout.innerHTML = rows.map(([k,v,ok]) => `<div class="${ok ? "ok" : ""}"><span>${k}</span><b>${v}</b></div>`).join("");
+    const [mode, text] = verdictFor(p);
+    verdict.innerHTML = `<small>${mode}</small>${text}`;
+  }
+  syncInputs(); update();
+  scene(canvas, (ctx,w,h,t) => {
+    const k = REDUCE ? 1 : .14;
+    cur = { c: cur.c.map((v,i) => lerp(v, target.c[i], k)), s: lerp(cur.s, target.s, k), pinch: lerp(cur.pinch, target.pinch, k), mid: lerp(cur.mid, target.mid||0, k) };
+    const pts = build(cur), R = Math.min(w,h), sc = R*.22;
+    ctx.save(); ctx.strokeStyle = C.line; ctx.setLineDash([2,8]);
+    for (const r of [.3,.4]){ ctx.beginPath(); ctx.arc(w/2, h*.5, R*r, 0, 7); ctx.stroke(); } ctx.restore();
+    const PP = hand(ctx, pts, { x: w/2, y: h*.5 + sc*1.0, sc, col: C.cyan, blur: 20 });
+    const pr = pinchRatio(pts);
+    ctx.save(); ctx.setLineDash([3,5]); ctx.strokeStyle = pr < .32 ? C.amber : C.faint; ctx.beginPath(); ctx.moveTo(PP[4][0],PP[4][1]); ctx.lineTo(PP[8][0],PP[8][1]); ctx.stroke(); ctx.restore();
+    label(ctx, "live model · 21 pts", 20, 24, C.mute);
+    label(ctx, `scale ${scaleOf(pts).toFixed(2)}`, w-20, 24, C.faint, "right");
+  }, 1);
+})();
+
+/* ---------------------------------------------------------------- reveal + progress + copy */
+const rv = [...document.querySelectorAll(".rv")];
+if (!REDUCE){
+  rv.forEach(el => { if (el.getBoundingClientRect().top > innerHeight*.92) el.classList.add("pre"); });
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting){ e.target.classList.remove("pre"); io.unobserve(e.target); } }), { rootMargin: "0px 0px -8% 0px" });
+  rv.forEach(el => el.classList.contains("pre") && io.observe(el));
+}
+const rail = document.getElementById("rail");
+const onScroll = () => { const m = document.documentElement.scrollHeight - innerHeight; rail.style.transform = `scaleX(${m > 0 ? scrollY/m : 0})`; };
+addEventListener("scroll", onScroll, { passive: true }); onScroll();
+document.querySelectorAll(".copy").forEach(b => b.addEventListener("click", () => {
+  const pre = b.parentElement.querySelector("pre");
+  const text = [...pre.childNodes].map(n => n.nodeType === 3 ? n.textContent : n.classList && (n.classList.contains("p") || n.classList.contains("c")) ? "" : n.textContent).join("").replace(/[ \t]+$/gm, "").trim();
+  const done = () => { b.textContent = "Copied"; setTimeout(() => b.textContent = "Copy", 1600); };
+  (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(done).catch(() => { const r = document.createRange(); r.selectNodeContents(pre); const s = getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent = "Selected"; });
+}));
+})();
+</script>
